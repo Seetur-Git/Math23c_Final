@@ -1,0 +1,14 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r loading Data}
+#sart dom: 50%
+#dom live: 50%
+#rec live: 75%bar 
+#mutation:  1%
+Pop <- read.csv('PopulationA.csv')
+Pop <- read.csv('Population0.csv')
+```
+
