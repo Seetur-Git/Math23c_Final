@@ -14,7 +14,7 @@
 		Btime = 60;			//int; 	time gained by eating rec
 		n = 1;					//real;	reproduction rate
 //	------------------------------------------------------------
-		A = 0.5;
+		A = 
 		Achance = 
 		Bchance = 
 		Mrate = 
