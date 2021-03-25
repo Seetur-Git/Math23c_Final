@@ -1,0 +1,30 @@
+
+	//Defaults:
+		A = 0.5; 				//0-1;	start % dom
+		Achance = .5; 	//0-1;	chance for dom to live through generation
+		Bchance = .75; 	//0-1;	chance for rec to live through generation
+		Mrate = .01;		//0-1;	Mutation rate
+		P = 100;				//int;	starting population
+		S = 1/3;				//real;	move spees as a fraction of particle width
+		MaxTime = 120;	//int;	frames per generation
+		//Predator
+		EatA = .75;			//0-1;	Chance to ead dom
+		EatB = .75;			//0-1;	Chance to ead rec
+		Atime = 60;			//int;	time gained by eating dom
+		Btime = 60;			//int; 	time gained by eating rec
+		n = 1;					//real;	reproduction rate
+//	------------------------------------------------------------
+		A = 0.5;
+		Achance = 
+		Bchance = 
+		Mrate = 
+		P = 
+		S = 
+		MaxTime = 
+		//Predator
+		EatA = 
+		EatB = 
+		Atime = 
+		Btime = 
+		n = 
+//	-------------------------------------------------------------
