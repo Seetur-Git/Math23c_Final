@@ -1,0 +1,90 @@
+---
+title: "Final Project"
+output: 
+  html_document:
+    df_print: paged
+  pdf_document: default
+  html_notebook: default
+---
+
+```{r Source_dari_2, include=FALSE}
+path = setwd('../')
+print(path)
+source(knitr::purl(paste0(getwd(), '/dari_2.Rmd'), output = tempfile()))
+#source for how to source an RMD file: https://stackoverflow.com/questions/10966109/how-to-source-r-markdown-file-like-sourcemyfile-r
+setwd(path)
+```
+
+```{r loading Data}
+#sart dom: 50%
+#dom live: 50%
+#rec live: 75%bar 
+#mutation:  1%
+PopPath = 'Populations/'
+#Pop <- read.csv(PopPath %.% 'Population24.csv')
+Pop <- read.csv(PopPath %.% 'Population25.csv')
+attach(Pop)
+Pop$Tot = Rec+Dom+Het
+
+GeneA <- 2*Dom+Het
+GeneB <- 2*Rec+Het
+
+detach(Pop)
+DT::datatable(Pop)
+```
+
+```{r barplot}
+attach(Pop)
+N = 1:nrow(Pop)
+
+barplot(Tot[N]-Rec[N]) #total not Rec
+
+barplot(Rec[N]) #total Rec
+
+barplot((Tot[N]-Rec[N])/Tot[N]) #percent not Rec
+
+barplot(Rec[N]/Tot[N]) #Percent rec
+
+Pop$perc <- GeneB/(2*Tot) #percentage rec genes (gene B)
+barplot(Pop$perc)
+#length(GeneB);length(Tot)
+detach(Pop)
+```
+
+```{r logistic regreassion}
+library(stats4)
+  X <- N
+  #p.rec <- Pop$Rec/Pop$Tot # %recessive
+  Y = Pop$perc
+
+  results<-MLE(0,0)
+  barplot(rbind(Y,Logit.curve(N,results@coef)),beside = TRUE,xlab = 'Generation',ylab = 'Percentage Recessive', col = c('black','blue'))
+  print.('Coefficients: ', results@coef)
+  print.('Minus Log Likelihood:', results@minuslogl(results@coef[1],results@coef[2]))
+```
+
+```{r X^2 test,results='asis'}
+scale <- max(Pop$Tot) #scale by number of data points
+X_2 <- chisq.stat(Y*scale,Logit.curve(N,results@coef)*scale); htmlCat('$\\chi^2\\ =\\ $ `');htmlCat(X_2)
+pchisq(X_2,29,lower.tail = FALSE) #even though we would expect population growth to be logistic, in this case, seeing as the the P-value was only .1, it does not appear to be a good model. 
+```
+
+```{r}
+
+```
+
+### To Do List
+
+-   Contingency table on Rec vs Het increacing
+
+-   compare Rec vs Het increacing with permutation test
+
+-   fancy distribution
+
+-   integration
+
+-   find something that we can properly model
+
+-   linear regression
+
+-   covariance/correlation of dom vs rec
