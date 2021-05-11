@@ -1,0 +1,707 @@
+---
+title: "Dari's first Notebook"
+output:
+  html_notebook: default
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+```{r Source dari_2, include=FALSE}
+# path = setwd('../')
+# source(knitr::purl(paste0(getwd(), '/dari_2.Rmd'), output = tempfile()))
+# #source for how to source an RMD file: https://stackoverflow.com/questions/10966109/how-to-source-r-markdown-file-like-sourcemyfile-r
+# setwd(path)
+```
+```{r include=FALSE}
+path_ = getwd()
+```
+
+```{r rand}
+rand <- function(min = 0, max = 1, num = 1) {
+  ans = runif(num,min,max);
+  return(ans)
+}
+irand <- function(min = 0, max = 1, num = 1) {
+  ans = round(rand(min,max,num));
+  return(ans)
+}
+brand <- function(num = 1) {
+  ans = runif(num,0,1) > 0.5;
+  return(ans)
+}
+lrand <- function(num = 1,list = c(TRUE,FALSE)) {
+  ans = sample(list,num,replace = TRUE);
+  return(ans)
+}
+```
+```{r BasicLogic}
+"%X%" <- function(x,y) {
+  ans = xor(x,y);
+  return(ans)
+}
+"%XX%" <- function(x,y) {
+  ans = (x|y) & !(x&y);
+  return(ans)
+}
+
+"%@%" <- function(x,y) {
+    names(x) <- paste0("[",x,"]")
+    names(y) <- paste0("[",y,"]")
+    outer(x,y,"%XX%")
+}
+
+"%+=%" <- function(x,y) {
+  eval.parent(substitute(x <- x + y))
+  return (x)
+}
+"%-=%" <- function(x,y) {
+  eval.parent(substitute(x <- x - y))
+  return (x)
+}
+"%*=%" <- function(x,y) {
+  eval.parent(substitute(x <- x * y))
+  return (x)
+}
+"%/=%" <- function(x,y) {
+  eval.parent(substitute(x <- x / y))
+  return (x)
+}
+"%.%" <- function(x,y) {
+   paste0(x,y)
+}
+"%+%" <- function(x,y) {
+  if (is.character(x)| is.character(y)) {
+    if (is.vector(x)|is.vector(y)){
+      val <- c(x,y)
+    } else {
+      val <- x %.% y
+    }
+  } else if ((is.vector(x)|is.matrix(x))&(is.vector(y)|is.matrix(y))) {
+    val <- cbind(x,y)
+  }
+  return (val)
+}
+print. <- function(...) {
+  cat(...,'\n')
+}
+same <- function(...,all = FALSE,any = FALSE) {
+  args <- c(...)
+  len = length(args)
+  lenU = length(unique(args))
+  num = len-lenU
+  if(all){return(lenU == 1)}
+  if(any){return(lenU > 0)}
+  return(num)
+}
+'%=%' <- function(x,vector) {
+  y = FALSE
+  if(max(x == vector)){y = TRUE} #if vector contains x, output true
+  return(y)
+}
+'%!%' <- function(x,vector) {
+  y = FALSE
+  if (min(x != vector)) {y = TRUE} #if x is different from all elements of the vecter, output true
+  return(y)
+}
+```
+```{r nonbinary logic}
+Or <- function(...) {
+  args <- list(...)
+  len <- length(args)
+  for (i in 1:len){
+    if (args[[i]]){return(TRUE)}
+  }
+  return(FALSE)
+}
+Nor <- function(...) {
+  args <- list(...)
+  len <- length(args)
+  for (i in 1:len){
+    if (args[[i]]){return(FALSE)}
+  }
+  return(TRUE)
+}
+And <- function(...) {
+  args <- list(...)
+  len <- length(args)
+  for (i in 1:len){
+    if (!args[[i]]){return(FALSE)}
+  }
+  return(TRUE)
+}
+Nand <- function(...) {
+  args <- list(...)
+  len <- length(args)
+  for (i in 1:len){
+    if (!args[[i]]){return(TRUE)}
+  }
+  return(FALSE)
+}
+Xor <- function(...) {
+  args <- list(...)
+  len <- length(args)
+  ans <- FALSE;
+  for (i in 1:len){
+    if (args[[i]]){ans <- !ans}
+  }
+  return(ans)
+}
+Xnor <- function(...) {
+  args <- list(...)
+  len <- length(args)
+  ans <- TRUE;
+  for (i in 1:len){
+    if (args[[i]]){ans <- !ans}
+  }
+  return(ans)
+}
+Ornd <- function(min,...) {
+  args <- list(...)
+  len <- length(args)
+  count = 0;
+  for (i in 1:len){
+    if (args[[i]]){count <- count + 1}
+    if (count >= min) {return(TRUE)}
+  }
+  return(FALSE)
+}
+Nornd <- function(max,...) {
+  args <- list(...)
+  len <- length(args)
+  count = 0;
+  for (i in 1:len){
+    if (args[[i]]){count <- count + 1}
+    if (count >= max) {return(FALSE)}
+  }
+  return(TRUE)
+}
+Not <- function(...) {
+  args <- list(...);
+  args <- args != 0
+  len <- length(args)
+  count = 0;
+  for (i in 1:len){
+    count %+=% args[[i]];
+  }
+  temp <- count/len;
+  ans <- temp <= .5 
+  #return(!x)
+  return(ans)
+}
+Is <- function(...) {
+  args <- list(...);
+  args <- args != 0
+  len <- length(args)
+  count = 0;
+  for (i in 1:len){
+    count %+=% args[[i]];
+  }
+  temp <- count/len;
+  ans <- temp > .5 
+  return(ans)
+}
+If <- function(x) {
+  if (x) {
+    return(TRUE)
+  }
+  return(FALSE)
+}
+Pnot <- function(x) {
+  return(max(c(1-x,0)))
+}
+```
+```{r implication}
+'%=>%' <- function(x,y) {
+  return((!x)|y)
+}
+'%<=>%' <- function(x,y) {
+  return((x%=>%y) & (y%=>%x))
+}
+Mean <- function(...) {
+  args = c(...)
+  mean(args)
+  
+}
+```
+```{r run}
+run <- function(fnc, vector) {
+  if (is.expression(fnc)) {eval(fnc)}
+  do.call(fnc,as.list(vector))
+}
+```
+## Logic Table
+```{r}
+##depricated
+  getBool <- function(num,pos,options = c(TRUE,FALSE), r = FALSE) {
+    ans = c();
+    if (options == 'TF'){options = c(TRUE,FALSE)}
+    for (i in 1:(length(options)^num)) {
+      if (r){
+        base <- length(options)^(num-pos+1);
+      }else {
+        base <- length(options)^(pos);
+      }
+      j <- (i-1) %% base;
+      temp <- j < (base/2);
+      #print(temp)
+      ans[i] <- temp;
+    }
+    return(ans)
+  }
+```
+```{r getTable}
+TF = c(TRUE,FALSE);true = TRUE; false = FALSE;
+getTable <- function(...,names = '', name = TRUE) {
+  args = rev(list(...))
+  #print(args)
+  len <- length(args)
+  doName <- FALSE;
+  for (i in 1:len) {
+    if (length(args[[i]]) <= 1) {
+      if(args[[i]]=='TF'){
+        args[[i]] <- c(TRUE,FALSE)
+      }
+    }
+  }
+  if (length(names) == 0){names = ''}
+  if (length(names) == 1) {
+    if(names==''){
+      doName <- FALSE
+    } else {doName <- TRUE}
+  }else if (length(names) == len){
+    doName <- TRUE
+  }
+  ans = do.call(expand.grid,args)
+  ans = data.frame(ans[,c(len:1)])
+  if (name) {
+    colname <- c();
+    colname <- paste0('[',1:(len),']')
+    colnames(ans) <- colname;
+  }
+  if(doName){
+    colnames(ans) <- names;
+    
+  }
+  return(ans)
+}
+```
+```{r table}
+LogicTable <- function(fnc,...,names=formalArgs(fnc),table = TRUE,ShowFnc = typeof(fnc) == typeof('')) {
+  args <- list(...);
+  toTable <- args;
+  toTable$name  <- FALSE;
+  toTable$names <- names;
+  doName <- FALSE
+  #print(args)
+  if (table){
+    #for(i in 1:(nc-1)){
+      args <- do.call(getTable,toTable)
+      eval.parent(substitute(tabl <- args))
+    #}
+  }
+  nc <- length(args) + 1;
+  nr <- length(args[[1]]);
+  if (length(names) == 0){names = ''}
+  if (length(names) == 1) {
+    if(names==''){
+      doName <- FALSE
+    } else {doName <- TRUE}
+  }else if (length(names) == nc-1){
+    doName <- TRUE
+  }
+  ans <- as.data.frame(matrix(ncol = nc, nrow = nr))#as.table()
+    colname <- c();
+    if (doName){
+      colname <- names
+    }else {
+      colname <- paste0('[',1:(nc),']')
+    }
+    if (ShowFnc) {
+      colname[nc] <- fnc
+    } else {
+      colname[nc] <- 'f'
+    }
+    colnames(ans) <- colname;
+  for (i in 1:nr) {
+    for (j in 1:(nc-1)){
+      if(length(levels(args[[j]][[i]])) == 0) {
+        temp <- args[[j]][[i]];
+        #print(i)
+        #print(j)
+      } else {
+        temp <- levels(args[[j]][[i]]);
+      }
+      #print(temp)
+      ans[[i,j]] <- temp;
+    }
+    if (table){
+      temp <- as.list(args[i,]);
+    } else {
+      temp <- as.list(ans[i,-nc]);
+    }
+    #print(temp)
+    {
+        # if (table){
+        #   ans <- args;
+        #   ans$f <- do.call(fnc,temp);
+        # } else {
+        #   ans[[i,nc]] <- do.call(fnc,temp);
+        # }
+    }
+    ans[[i,nc]] <- do.call(fnc,temp);
+  }
+  rownames(ans) <- paste0('[',1:(nr),']')
+  return (ans)
+}
+```
+
+``` {r htm_Functions}
+dtable <- function(table) {
+  DT::datatable(table)
+}
+htmlCat <- function(...) {
+  cat(as.character(htmltools::tagList(...)))
+}
+
+```
+
+```{r CompTable}
+CompTable <- function(fncs,...) {
+  args <- list(...)
+  len = length(fncs)
+  args$fnc <- fncs[1]
+  TableA <- do.call(LogicTable,args)
+  Tabl <- TableA
+  if (len > 1) {
+    for (i in 2:len) {
+      args$fnc <- fncs[i]
+      TableN <- do.call(LogicTable,args)
+      Tabl$f <- TableN[[fncs[i]]]
+        j = which(names(Tabl) == 'f')
+        if(length(j)!=0){names(Tabl)[j] <- fncs[i]}
+    }
+  }
+  
+  DTbl =  DT::datatable(Tabl,
+      rownames = FALSE,
+      class    = 'cell-border stripe',
+      filter = 'top',
+      options = list(
+      pageLength = 10,
+      autoWidth=FALSE
+    )
+  )
+  print(DTbl)
+  
+  invisible(Tabl)
+}
+```
+## Week 2 functions
+```{r}
+Var <- function(x) {
+  EX <- mean(x)
+  EX2 <- mean(x^2)
+  ans <- EX2 - EX^2
+  return(ans)
+}
+  #These are based of of Paul's code
+permutation.test <- function(tbl = data.frame(c(rep(TRUE,m),rep(FALSE,b-m),rep(TRUE,a-m),rep(FALSE,len-b-(a-m))),c(rep(TRUE,b),rep(FALSE,len-b))),N = 1000,returnTable = FALSE, a = 0, m = 0, b = 0, len = 0) {
+  #tbl in the form tbl[1] = condition a, tbl[2] = condition b, where we test the effect of a on b
+  #a = number of as, b = number of bs, len = total number, m = number of timed a&b = true
+  len <- length(tbl[[1]])
+  a_b <- numeric(N)
+  for (i in 1:N){
+    scramble <- sample(tbl[[1]],len) #Randomize which rows have property a
+    a_b[i] <- sum (tbl[[2]]&scramble) #Checks the number of times which the randomized row is true and condition be is true
+  }
+  if (returnTable) {return(a_b)}
+  chance <- mean(a_b == sum(tbl[[1]]&tbl[[2]])) #checks which times the randomized versions were as correlated as the original, then takes the mean to give a p-value
+  return(chance)
+}
+scramble.test <- function(tbl,N = 1000,returnTable = FALSE) {
+  len <- length(tbl[[1]])
+  tblA = subset(tbl,tbl[[1]]) #all for which the condition is true
+  lenA <- length(tblA[[1]])
+  tblB = subset(tbl,!tbl[[1]]) #all for which the condition is false
+  lenB <- length(tblB[[1]])
+  numA <- mean(tblA[[2]]) #average with condition
+  numB <- mean(tblB[[2]]) #average without condition
+  diff <- abs(numA-numB) #amount more likely with than without (or visa versa)
+  
+  sampDiff <- numeric(N)
+  for (i in 1:N) {
+    samp <- sample(nrow(tbl),lenA) #get a number of random indices equal to the amount with the condition
+    numSamp <- mean(tbl[[2]][samp]) #mean for the random sample
+    numOther <- mean(tbl[[2]][-samp]); #mean for the complement of the random sample
+    sampDiff[i] <- numSamp - numOther #calculates absulute difference
+  }
+  eval.parent(substitute(diffs <- sampDiff))
+  chance = mean(abs(sampDiff) >= diff)  #calculates the P-value based on the amount of times the random difference is more than the actual difference
+  return(chance)
+}
+```
+## Week 3
+```{r binary set funcitons}
+'%V%' <- function(x,y) {
+  return(union(x,y))
+}
+'%U%' <- function(x,y) {
+  return(union(x,y))
+}
+'%^%' <- function(x,y) {
+  return(intersect(x,y))
+}
+'%E%' <- function(x,y) {
+  return(is.element(x,y))
+}
+'%\\%' <- function(x,y) {
+  return(setdiff(x,y))
+}
+'%\\\\%' <- function(x,y) {
+  a = setdiff(x,y)
+  b = setdiff(y,x)
+  c = union(a,b)
+  return(c)
+}
+```
+
+```{r}
+EqClass <- function(...,printSets = FALSE, r = TRUE) {
+  args <- list(...) #sets
+  len <- length(args) #M
+  elements <- c()
+  for (i in 1:len){
+    elements <- args[[i]] %U% elements
+  }
+  elements <- sort(elements) #S
+    # print(elements)
+  num <- length(elements) #N
+    # print(num)
+  ans <- vector('list',num)
+  names(ans) <- elements
+  for (i in elements) {
+    class <- elements
+    for(j in 1:len){
+      if (i %E% args[[j]]) {
+        class <- class %^% args[[j]]
+      } else {
+        class <- class %\% args[[j]]
+      }
+    }
+    ans[[i]] <- class
+  }
+  if (!r) {
+    ans <- ans[!duplicated(ans)] #credit for how to remove duplication whilst keeping row names https://www.datanovia.com/en/lessons/identify-and-remove-duplicate-data-in-r/
+    #remove(x) and union(x,c()) both remove duplicates, but also remove row names
+  }
+  if (printSets) {print(args); cat('\n ------------------- \n')}
+  return(ans)
+}
+```
+## week 6
+```{r matrix fuctions}
+
+rev.m <- function(m,byCol = FALSE,byRow = TRUE) {
+  if(byRow & !byCol) {
+    len <- nrow(m)
+    reversed <- m[len:1,]
+  } else {
+    len <- ncol(m)
+    reversed <- m[,len:1]
+  }
+  return(reversed)
+}
+swap <- function(m,a,b,byCol=FALSE,byRow = TRUE) {
+  if(byRow & !byCol){
+    m[c(b,a),] <- m[c(a,b),]
+  } else {
+    m[,c(b,a)] <- m[,c(a,b)]
+  }
+  return(m)
+}
+# rows <- function(m) {
+#   Rows <- length(m[1,])
+#   return(Rows)
+# }
+# cols <- function(m) {
+#   Cols <- length(m[,1])
+#   return(Cols)
+# }
+
+```
+# Week 7
+```{r}
+sqr.matrix <- function(m) {
+  return(m %*% t(m)) # M x M transpose
+}
+Det <- function(m) {
+  sqrt(abs(det(sqr.matrix(m)))) #generalized absolute determinant
+}
+ex <- expression
+J <- function(expr.vector) {
+  
+}
+chisq.stat <- function(obs,exp) {
+  X <- obs-exp
+  X2 <- sum(X^2/exp)
+  return(X2)
+}
+```
+# week 9
+```{r}
+len.v <- function(v,`%i%` = `%*%`) {
+  len <- sqrt(v%i%v)
+  return(len)
+}
+norm.v <- function(v,`%i%` = `%*%`) {
+  len <- len.v(v,`%i%`)
+  norm <- v/c(len)
+  return(norm)
+}
+Orth <- function(...,normal = FALSE,`%i%` = `%*%`) {
+  W <- cbind(...)
+  num <- ncol(W)
+  V <- W; colnames(V)<-('V'%.%1:num)
+  for(i in 1:num){
+    if (i != 1) {
+      for (j in 1:(i-1)){
+        V[,i] %-=% (c((V[,j]%i%V[,i])/(V[,j]%i%V[,j]))*V[,j])
+      }
+    }
+    if(normal){V[,i] <- norm.v(V[,i],`%i%`)}
+  }
+  return(V)
+}
+
+
+## Fourier Transform
+  #independant sinusoidal functions
+  fourier.Cos <- function(m,n) {
+    cos(m*2*pi*(1:n)/n)
+  }
+  fourier.Sin <- function(m,n) {
+    sin(m*2*pi*(1:n)/n)
+  }
+  
+  #sinusoidal coefficients
+  Coef.cos <- function(m,Data, n = length(Data)) {
+    sum(Data*2*fourier.Cos(m,n)/n)
+  }
+  Coef.sin <- function(m,Data, n = length(Data)) {
+    sum(Data*2*fourier.Sin(m,n)/n)
+  }
+  
+  #discrete Fourier Transform
+  fourier.discrete <- function(Data,ncoeff) {
+    Fourier     <- list()
+    Fourier$cos <- sapply(1:ncoeff,Coef.cos,Data = Data)
+    Fourier$sin <- sapply(1:ncoeff,Coef.sin, Data = Data)
+    Fourier$c   <- mean(Data)
+    Fourier$n   <- length(Data)
+    
+    Fourier$approx <- Fourier$c
+    for (m in 1:ncoeff) {
+      Fourier$approx %+=% (Fourier$cos[m]*fourier.Cos(m,Fourier$n)+Fourier$sin[m]*fourier.Sin(m,Fourier$n))
+    }
+    return(Fourier)
+  }
+
+  #repeated vertical lines  
+draw.lines <- function(x,spacing, ...) {
+  for (i in seq(from=min(x),to=max(x),by=spacing)) {
+    abline(v=i, ...)
+  }
+}
+```
+
+# Week 10
+```{r}
+P.m <- function(...,A=cbind(...),y=c(),reg=FALSE,degree = 0) {
+  if (degree > 0){
+    x <- A[,1]
+    A <- as.matrix(x^0)
+    for (i in 1:degree){
+     A <- cbind(A,x^i) 
+    }
+  }
+  if (!reg) {P <- A%*%solve(t(A)%*%A)%*%t(A)}
+  else {P <- solve(t(A)%*%A)%*%t(A)}
+  if (length(y) > 0){ P.y <- P %*% y; return(P.y)}
+  return(P)
+}
+
+LogOdd <- function(alpha,beta,X=X,Y=Y) {
+  -sum(
+    log(exp(alpha+beta*X)/(1+exp(alpha+beta*X)))*Y
+    + log(1/(1+exp(alpha+beta*X)))*(1-Y)
+  )
+}
+
+MLL <- function(alpha,beta) {
+  LogOdd(alpha,beta,X,Y)
+}
+MLE <- function(a,b) {
+  mle(MLL, start = list(alpha = a, beta = b))
+}
+
+Logit.curve <- function(x,Coef) {
+  exp(Coef[1]+Coef[2]*x)/ 
+    (1+exp(Coef[1]+Coef[2]*x))
+}
+
+
+I.m <- function(x) {
+  diag(1,x,x)
+}
+
+proj.v <- function(v,Basis,coef = FALSE) {
+  len <- ncol(Basis)
+
+  if (coef){
+    Proj <- c(Basis[,1]%*%v/len.v(Basis[,1])^2)
+    for (i in 1:len) {
+      if (i !=1){
+        Proj <- Proj %+% (c(Basis[,i]%*%v/len.v(Basis[,i])^2))
+      }
+    }
+  } else {
+    Proj <- c(Basis[,1]%*%v/len.v(Basis[,1])^2)*Basis[,1]
+    for (i in 1:len) {
+      if (i !=1){
+        Proj %+=% (c(Basis[,i]%*%v/len.v(Basis[,i])^2)*Basis[,i])
+      }
+    } 
+  }
+  return(Proj)
+}
+
+center.v <- function(v) {
+  (v - mean(v))/sqrt(length(v))
+}
+
+center.m <- function(m) {
+  for (i in 1:ncol(m)) {
+    m[,i] <- center.v(m[,i])
+  }
+  return(m)
+}
+
+sqr.m <- sqr.matrix
+```
+```{r}
+where <- function(obj,For,dist=0) {
+  len = length(For)
+  idx = c()
+  for (i in 1:len) {
+    idx <- c(idx,which(abs(obj-For[i]) <= dist))
+  }
+  return(sort(idx))
+}
+```
+
+## Commands
+
+```{r cons, include = FALSE}
+```
+```{r code}
+```
