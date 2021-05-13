@@ -1,0 +1,217 @@
+---
+title: "Final Project"
+output: 
+  html_notebook: default
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r Source_dari_2, include=FALSE}
+path = setwd('../')
+print(path)
+source(knitr::purl(paste0(getwd(), '/dari_2.Rmd'), output = tempfile()))
+#source for how to source an RMD file: https://stackoverflow.com/questions/10966109/how-to-source-r-markdown-file-like-sourcemyfile-r
+setwd(path)
+```
+
+```{r loading Data}
+#sart dom: 0%
+#dom live: 50%
+#rec live: 75% 
+#mutation:  3%
+PopPath = 'Populations/'
+#Pop <- read.csv(PopPath %.% 'Population24.csv')
+Pop <- read.csv(PopPath %.% 'Population25.csv')[-4]
+attach(Pop)
+  Pop$Tot = Rec+Dom+Het
+  
+  GeneA <- 2*Dom+Het
+  GeneB <- 2*Rec+Het
+
+detach(Pop)
+dtable(Pop)
+```
+
+```{r barplot}
+attach(Pop,warn.conflicts = FALSE)
+  M = nrow(Pop)
+  N = 1:M
+  
+  barplot(Tot[N]-Rec[N]) #total not Rec
+  
+  barplot(Rec[N]) #total Rec
+  
+  barplot((Tot[N]-Rec[N])/Tot[N]) #percent not Rec
+  
+  barplot(Rec[N]/Tot[N]) #Percent rec
+  
+  Pop$perc <- GeneB/(2*Tot) #percentage rec genes (gene B)
+  barplot(Pop$perc)
+  #length(GeneB);length(Tot)
+detach(Pop)
+```
+
+```{r logistic regreassion}
+library(stats4)
+X <- N
+#p.rec <- Pop$Rec/Pop$Tot # %recessive
+Y = Pop$perc
+
+results<-MLE(0,0)
+barplot(rbind(Y,Logit.curve(N,results@coef)),beside = TRUE,xlab = 'Generation',ylab = 'Percentage Recessive', col = c('black','blue'))
+print.('Coefficients: ', results@coef)
+print.('Minus Log Likelihood:', results@minuslogl(results@coef[1],results@coef[2]))
+```
+
+####  $\chi^2$ test
+```{r X^2 test,results='asis'}
+scale <- max(Pop$Tot) #scale by number of data points
+X_2 <- chisq.stat(Y*scale,Logit.curve(N,results@coef)*scale); htmlCat('$\\chi^2\\ =\\ $ `');htmlCat(X_2)
+pchisq(X_2,29,lower.tail = FALSE)
+print('even though we would expect population growth to be logistic, in this case, seeing as the the P-value was only .1, it does not appear to be a good model. ')
+```
+
+####  Modeling with Arctangent
+```{r Modeling with Arctangent,results='asis'}
+
+
+#normalize
+YY <- Y - ((min(Y)+max(Y))/2)
+Y0 <- which.min(abs(YY)) #where the 0s of this YY is. not quite the correct 0, so the fit won't be perfect
+X_ <- X - Y0
+
+plot(X_,Y,xlim=c(-15,15))
+
+
+Y.norm <- function(y) {
+  y1 <- y - ((min(y)+max(y))/2)
+  y_ <- y1 * atan(max(X_)) / max(y1)
+  eval.parent(substitute(y.max <- max(y1)))
+  return(y_)
+}
+
+Y.denorm <- function(y_) {
+  y1 <- y_ / atan(max(X_)) * y.max
+  y <- y1 + ((min(Y)+max(Y))/2)
+  return(y)
+}
+
+
+Y_ <- Y.norm(Y)
+
+
+plot(X_,Y_,xlim=c(-15,15))
+
+#take tanget
+Y2 <- tan(Y_) 
+
+Coeff <- rev(P.m(X_,y=Y,reg=T,degree = 1));print.(c('a = ','b = ') %.% Coeff) #do linear regression by using projection matrix
+fLine <- function(x) {
+  Coeff[1]+Coeff[2]*x
+}
+plot(X_,Y2,xlim=c(-15,15))
+curve(fLine(x),add = TRUE,col='blue')
+
+#undo tanget
+
+
+plot(X_,Y,xlim=c(-15,15))
+curve(Y.denorm(atan(fLine(x))),add = TRUE,col='blue')
+
+expect  <- Y.denorm(atan(fLine(X_))) *scale
+observe <- Y * scale
+
+X_2 <- chisq.stat(observe,expect); htmlCat('$\\chi^2\\ =\\ $ `');htmlCat(X_2)
+pchisq(X_2,29,lower.tail = FALSE); print.('This value is pretty high. ~0.8. That shows that this is a pretty good fit (which can easily be seen). Overall it is quite interesting that an arctanget curve was the best fit.')
+
+```
+
+
+
+
+
+
+
+#### population change matrix
+```{r population change matrix}
+PopChange <- matrix(nrow = M,ncol = ncol(Pop)); colnames(PopChange) <- colnames(Pop) %.% '.inc' #initialize population change matrix
+for (i in 2:M) {
+  PopChange[i,] <- as.matrix(Pop)[i,]-as.matrix(Pop)[i-1,] #make each row the change since the previous generation
+}
+PopChange <- as.data.frame(PopChange) #convert population change matrix to a data-frame
+
+# Make boolean columns for if the variable increased
+for (Col in colnames(Pop)) {
+  ColNum <- Col %.% '.inc'
+  ColBool <- Col %.% '.bool'
+  PopChange[ColBool] <- PopChange[ColNum] > 0 # if the variable increased since the last generation
+}
+
+hist(PopChange$Tot.inc,breaks = 15,xlab = 'Overall Population Change',main = 'Histogram of Population Change')
+print.('We see an interesting spike around -8 and another around 5, but a gap near 8')
+dtable(PopChange)
+```
+
+####  Permutation and contingency table
+```{r Permutation and contingency table}
+attach(PopChange,warn.conflicts = FALSE)
+  table(Rec.bool,Het.bool); print.('This seems to show that when Heterozygous or Recessive increase, the other is likely to do so as well.\n','We can test this with a permutation test')
+
+  Pval<-permutation.test(Rec.bool[-1]%+%Het.bool[-1],N=10000);
+  print.( 'we get a P-value of ~' %+% Pval %+% ' (just under 0.05 when done with n = 1,000,000) which shows that this result is statistically significant in that there does appear to be a positive correlation.' )
+detach(PopChange)
+```
+####  correlation and co-varience
+```{r correlation and co-varience}
+plot(Pop$Dom,Pop$Rec)
+
+print.('We should expect that the domminant and recissive should be negativly coralated because as the number of recissive cells increases the number of domminant cells should be decreasing, and that they should have a high co-varience because they have a large spread.')
+
+Corr <- cor(Pop$Dom,Pop$Rec);print.('We have a correlation of ' %+% Corr %+% '. which is negative as we would expect as stated above.')
+
+
+covar <- var(Pop$Dom,Pop$Rec);print.('We have a covarience of ' %+% covar %+% '. which is large and negative as we would expect as stated above.')
+```
+#### check if dom~rec fits to $\Gamma$ distribution
+```{r check if dom~rec fits to gamma distribution}
+X2 <- rep(Pop$Dom,Pop$Rec)
+
+E.X <- mean(X2) #expectation
+  #E.X <- sum(Pop$Dom*Pop$Rec)/sum(Pop$Rec) #this one works fine, but the above is the same format is was used for variance.
+
+V.X <- sum((X2-E.X)^2/length(X2)) #Variance
+  #V.X <- Var(Pop$Dom/Pop$Rec)
+
+
+rate  <- (V.X/E.X)^(-1) 
+shape <- (E.X*rate)
+
+#Γ
+Γ <- function(x) {
+  return(dgamma(x,shape = shape,rate = rate))
+}
+
+
+Γ.curve <- curve(Γ(x))
+Γ.area  <-integrate(Γ,min(Pop$Dom),max(Pop$Dom))
+Γ.curve.norm   <- Γ.curve
+Γ.curve.norm$x <- Γ.curve$x[-1] / max(Γ.curve$x[-1]) * max(Pop$Dom)
+Γ.curve.norm$y <- Γ.curve$y[-1] / max(Γ.curve$y[-1]) * max(Pop$Rec)# /Γ.area$value * sum(Pop$Dom)
+
+plot(Pop$Dom,Pop$Rec)
+points(Γ.curve.norm$x,Γ.curve.norm$y,type='l',col='blue') #pretty good expect in the second fifth
+```
+
+
+
+
+### To Do List
+
+
+-   Integration
+-   Written explanation
+-   Short R script
+-   Conculsion
+-   histogram
+-   ggplot
