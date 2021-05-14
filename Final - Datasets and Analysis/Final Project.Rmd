@@ -1,10 +1,11 @@
 ---
 title: "Final Project"
-output: 
+output:
   html_notebook: default
-  pdf_document: default
   html_document:
     df_print: paged
+  pdf_document: default
+  word_document: default
 ---
 
 ```{r Source_dari_2, include=FALSE}
@@ -74,16 +75,23 @@ print.('Minus Log Likelihood:', results@minuslogl(results@coef[1],results@coef[2
 #### $\chi^2$ test
 
 ```{r X^2 test,results='asis'}
+
 scale <- max(Pop$Tot) #scale by number of data points
-X_2 <- chisq.stat(Y*scale,Logit.curve(N,results@coef)*scale); htmlCat('$\\chi^2\\ =\\ $ `');htmlCat(X_2)
+X_2 <- chisq.stat(Y*scale,Logit.curve(N,results@coef)*scale); print.('$\\chi^2\\ =\\ '%+%X_2%+% '$.')
 pchisq(X_2,29,lower.tail = FALSE)
-print('even though we would expect population growth to be logistic, in this case, seeing as the the P-value was only .1, it does not appear to be a good model. ')
+print('When we scale by multiplying by the number of points, even though we would expect population growth to be logistic, in this case, seeing as the the P-value was only .1, it does not appear to be a good model. ')
+
+
+
+scale2 <- max(Pop$Tot)/sum(Y) #scale by making the area under the curve equal to the total number of samples
+X_2 <- chisq.stat(Y*scale2,Logit.curve(N,results@coef)*scale2); print.('$\\chi^2\\ =\\ '%+%X_2%+% '$.')
+pchisq(X_2,29,lower.tail = FALSE)
+print.('When we scale so that the total value is the number of points (which should be more accurate), we instead get a P-value of 1 suggesting that this is a VERY good model. This goes to show how sensitive $\\chi^2$ tests are since we only scales by a fact of $\\frac{1}{'%+%round(sum(Y),1)%+%'}$.')
 ```
 
 #### Modeling with Arctangent
 
 ```{r Modeling with Arctangent,results='asis'}
-
 
 #normalize
 YY <- Y - ((min(Y)+max(Y))/2)
@@ -169,8 +177,15 @@ ggplot(data_frame, aes(x)) +
 expect  %*=% scale
 observe %*=% scale
 
-X_2 <- chisq.stat(observe,expect); htmlCat('$\\chi^2\\ =\\ $ `');htmlCat(X_2)
+X_2 <- chisq.stat(observe,expect); print.('$\\chi^2\\ =\\ '%+%X_2%+% '$.')
 pchisq(X_2,29,lower.tail = FALSE); print.('This value is pretty high. ~0.8. That shows that this is a pretty good fit (which can easily be seen). Overall it is quite interesting that an arctanget curve was the best fit.')
+
+#set area under curve to number of data points
+expect  %/=% sum(Y)
+observe %/=% sum(Y)
+
+X_2 <- chisq.stat(observe,expect); print.('$\\chi^2\\ =\\ '%+%X_2%+% '$.')
+pchisq(X_2,29,lower.tail = FALSE); print.('This gives a value of 1 which demonstrates a near perfect fit, but since we can see that the version which has larger values (and thus has larger absolute error) is better than the logistic fit, and so is still a better fit.')
 
 ```
 
@@ -254,7 +269,7 @@ points(Γ.curve.norm$x,Γ.curve.norm$y,type='l',col='blue') #pretty good expect 
 
 #### % Change with $\chi^2$ fit
 
-```{r perc Change with chisq fit}
+```{r perc Change with chisq fit,results='asis'}
 pChange <- PopChange$perc.inc[-1]
 len <- length(pChange)
 plot(pChange)
@@ -294,4 +309,11 @@ ggplot(data_frame, aes(x)) +
 
 
 t.test(Observe,Expect); print.('We get a P-value of', t.test(Observe,Expect)$p.value ,'which shows that these likely come from the same distribution.')
+
+#Do with χ2 (this means that the data needs to be scaled)
+Expect  %*=% (len / sum(pChange))
+Observe  %*=% (len / sum(pChange))
+
+X_2 <- chisq.stat(Observe,Expect); print.('$\\chi^2\\ =\\ '%+%X_2%+% '$.')
+pchisq(X_2,29,lower.tail = FALSE); print.('<br> However, when we do a $\\chi^2$ test, we end up with a very low P-value, which would suggest that this is a bad fit.','<br><br>','It should also be noted that for both of these tests the null hypothesis is that the two data points come from the same distribution, meaning that a high P-value means that they are related. (unlike a permutation test which has independance as the null and thus the reverse meaning of P-values)')
 ```
