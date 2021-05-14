@@ -1,0 +1,154 @@
+---
+title: "Final - Short"
+output: 
+  html_notebook: default
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r Source_dari_2, include=FALSE}
+path = setwd('../')
+print(path)
+source(knitr::purl(paste0(getwd(), '/dari_2.Rmd'), output = tempfile()))
+#source for how to source an RMD file: https://stackoverflow.com/questions/10966109/how-to-source-r-markdown-file-like-sourcemyfile-r
+setwd(path)
+```
+
+
+### loading Data
+```{r loading Data}
+#settings used in the sumilation
+  #sart dom: 0%
+  #dom live: 50%
+  #rec live: 75%
+  #mutation:  3%
+PopPath = '../Final - Datasets and Analysis/Populations/'
+Pop <- read.csv(PopPath %.% 'Population25.csv')[-4] #removing predator column since it is not used
+attach(Pop)
+  Pop$Tot = Rec+Dom+Het
+  
+  GeneA <- 2*Dom+Het
+  GeneB <- 2*Rec+Het
+  Pop$perc <- GeneB/(2*Pop$Tot) #percentage rec genes (gene B)
+
+detach(Pop)
+  
+  
+M = nrow(Pop)
+N = 1:M
+```
+
+
+### Modeling with Arctangent
+
+```{r Modeling with Arctangent,results='asis'}
+
+X <- N
+Y = Pop$perc
+
+#normalize
+YY <- Y - ((min(Y)+max(Y))/2)
+Y0 <- which.min(abs(YY)) #where the 0s of this YY is. not quite the correct 0, so the fit won't be perfect
+X_ <- X - Y0
+
+
+Y.norm <- function(y) {
+  y1 <- y - ((min(y)+max(y))/2)
+  y_ <- y1 * atan(max(X_)) / max(y1)
+  eval.parent(substitute(y.max <- max(y1)))
+  return(y_)
+}
+
+Y.denorm <- function(y_) {
+  y1 <- y_ / atan(max(X_)) * y.max
+  y <- y1 + ((min(Y)+max(Y))/2)
+  return(y)
+}
+
+
+Y_ <- Y.norm(Y)
+
+#take tanget
+Y2 <- tan(Y_) 
+
+Coeff <- rev(P.m(X_,y=Y,reg=T,degree = 1));print.(c('a = ','b = ') %.% Coeff) #do linear regression by using projection matrix
+fLine <- function(x) {
+  Coeff[1]+Coeff[2]*x
+}
+plot(X_,Y2,xlim=c(-15,15))
+curve(fLine(x),add = TRUE,col='blue')
+
+
+
+#undo tanget
+
+
+y.detan <- function(x) {
+  Y.denorm(atan(fLine(x)))
+}
+
+
+plot(X_,Y,xlim=c(-15,15))
+curve(y.detan(x),add = TRUE,col='blue')
+
+
+#get values and multiply by number of data points for χ2 test
+scale <- max(Pop$Tot) #scale by number of data points
+expect  <- y.detan(X_) * scale
+observe <-Y * scale
+
+
+X_2 <- chisq.stat(observe,expect); htmlCat('$\\chi^2\\ =\\ $ `');htmlCat(X_2)
+pchisq(X_2,29,lower.tail = FALSE); print.('This value is pretty high. ~0.8. That shows that this is a pretty good fit (which can easily be seen). Overall it is quite interesting that an arctanget curve was the best fit.')
+
+```
+
+
+### population change matrix
+```{r population change matrix}
+PopChange <- matrix(nrow = M,ncol = ncol(Pop)); colnames(PopChange) <- colnames(Pop) %.% '.inc' #initialize population change matrix
+for (i in 2:M) {
+  PopChange[i,] <- as.matrix(Pop)[i,]-as.matrix(Pop)[i-1,] #make each row the change since the previous generation
+}
+PopChange <- as.data.frame(PopChange) #convert population change matrix to a data-frame
+
+# Make boolean columns for if the variable increased
+for (Col in colnames(Pop)) {
+  ColNum <- Col %.% '.inc'
+  ColBool <- Col %.% '.bool'
+  PopChange[ColBool] <- PopChange[ColNum] > 0 # if the variable increased since the last generation
+}
+
+hist(PopChange$Tot.inc,breaks = 15,xlab = 'Overall Population Change',main = 'Histogram of Population Change')
+print.('We see an interesting spike around -8 and another around 5, but a gap near 8')
+```
+
+
+### % Change with $\chi^2$ fit
+
+```{r perc Change with chisq fit}
+pChange <- PopChange$perc.inc[-1]
+len <- length(pChange)
+
+pChange.norm <- pChange/sum(pChange) #normalized data
+pChange.df <- sum(pChange.norm*1:len); #calculates the mean, which is then used as the degrees of freedom
+
+scale <- integrate(dchisq,df=pChange.df,1,len)$value #area under χ2, used to scale the 
+
+x2 <- function(x) {
+  ans <- dchisq(x,pChange.df) #χ2 fitted to the correct degrees of freedom
+  ans %/=% scale              #divide by area under curve to normalize
+  ans %*=% sum(pChange)        #multiply by the area it should have
+  return(ans)
+}
+
+
+plot(pChange)
+curve(x2(x),add = T,col='blue') #plots the scaled and fitted χ2
+
+Expect  <- x2(1:len)
+Observe <- pChange
+
+t.test(Observe,Expect); print.('We get a P-value of', t.test(Observe,Expect)$p.value ,'which shows that these likely come from the same distribution.')
+```
