@@ -1,10 +1,10 @@
 ---
 title: "Final Project"
 output: 
-  html_notebook: default
-  pdf_document: default
   html_document:
     df_print: paged
+  pdf_document: default
+  html_notebook: default
 ---
 
 ```{r Source_dari_2, include=FALSE}
@@ -15,6 +15,8 @@ source(knitr::purl(paste0(getwd(), '/dari_2.Rmd'), output = tempfile()))
 setwd(path)
 ```
 
+
+#### loading Data
 ```{r loading Data}
 #sart dom: 0%
 #dom live: 50%
@@ -32,7 +34,7 @@ attach(Pop)
 detach(Pop)
 dtable(Pop)
 ```
-
+####  barplot
 ```{r barplot}
 attach(Pop,warn.conflicts = FALSE)
   M = nrow(Pop)
@@ -52,6 +54,7 @@ attach(Pop,warn.conflicts = FALSE)
 detach(Pop)
 ```
 
+####  logistic regreassion
 ```{r logistic regreassion}
 library(stats4)
 X <- N
@@ -173,6 +176,7 @@ Corr <- cor(Pop$Dom,Pop$Rec);print.('We have a correlation of ' %+% Corr %+% '. 
 
 covar <- var(Pop$Dom,Pop$Rec);print.('We have a covarience of ' %+% covar %+% '. which is large and negative as we would expect as stated above.')
 ```
+
 #### check if dom~rec fits to $\Gamma$ distribution
 ```{r check if dom~rec fits to gamma distribution}
 X2 <- rep(Pop$Dom,Pop$Rec)
@@ -194,7 +198,7 @@ shape <- (E.X*rate)
 
 
 Γ.curve <- curve(Γ(x))
-Γ.area  <-integrate(Γ,min(Pop$Dom),max(Pop$Dom))
+#Γ.area  <-integrate(Γ,min(Pop$Dom),max(Pop$Dom))
 Γ.curve.norm   <- Γ.curve
 Γ.curve.norm$x <- Γ.curve$x[-1] / max(Γ.curve$x[-1]) * max(Pop$Dom)
 Γ.curve.norm$y <- Γ.curve$y[-1] / max(Γ.curve$y[-1]) * max(Pop$Rec)# /Γ.area$value * sum(Pop$Dom)
@@ -203,15 +207,46 @@ plot(Pop$Dom,Pop$Rec)
 points(Γ.curve.norm$x,Γ.curve.norm$y,type='l',col='blue') #pretty good expect in the second fifth
 ```
 
+#### % Change with $\chi^2$ fit
+```{r perc Change with chisq fit}
+library(ggplot2)
+pChange <- PopChange$perc.inc[-1]
+len <- length(pChange)
+plot(pChange)
+
+pChange.sum <- sum(pChange)
+pChange.norm <- pChange/pChange.sum #normalized data
+pChange.df <- sum(pChange.norm*1:len);print.(pChange.df) #calculates the mean, which is then used as the degrees of freedom
+
+scale <- integrate(dchisq,df=pChange.df,1,len)$value #area under χ2, used to scale the 
+
+x2 <- function(x) {
+  ans <- dchisq(x,pChange.df) #χ2 fitted to the correct degrees of freedom
+  ans %/=% scale              #divide by area under curve to normalize
+  ans %*=% pChange.sum        #multiply by the area it should have
+  return(ans)
+}
+
+
+# plot(pChange)
+# curve(x2(x),add = T,col='blue') #plots the scaled and fitted χ2
+
+Expect  <- x2(1:len)
+Observe <- pChange
+
+vals <- Expect %+% Observe
+val.list <- as.list(as.data.frame(t(vals)))
+
+data_frame <- data.frame(x=1:len,val=pChange,mins=unlist(lapply(val.list, min)),maxs=unlist(lapply(val.list, max)))
+
+ggplot(data_frame, aes(x)) + 
+  stat_function(fun=x2,colour = 'blue') + #source for plotting functions: https://stackoverflow.com/questions/5177846/plot-a-function-with-ggplot-equivalent-of-curve
+  geom_point( x=1:len, y=pChange)+
+  geom_errorbar(aes(ymin=mins, ymax=maxs), width=.2,
+                 position=position_dodge(0.05), colour = 'purple') +#source for plotting error bars: http://www.sthda.com/english/wiki/ggplot2-error-bars-quick-start-guide-r-software-and-data-visualization
+  labs(x = 'Generation', y = 'Change rec. %', title = '% Change with χ2 fit')
 
 
 
-### To Do List
-
-
--   Integration
--   Written explanation
--   Short R script
--   Conculsion
--   histogram
--   ggplot
+t.test(Observe,Expect); print.('We get a P-value of', t.test(Observe,Expect)$p.value ,'which shows that these likely come from the same distribution.')
+```
