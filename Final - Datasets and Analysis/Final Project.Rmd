@@ -1,10 +1,10 @@
 ---
 title: "Final Project"
 output: 
+  html_notebook: default
+  pdf_document: default
   html_document:
     df_print: paged
-  pdf_document: default
-  html_notebook: default
 ---
 
 ```{r Source_dari_2, include=FALSE}
@@ -15,16 +15,17 @@ source(knitr::purl(paste0(getwd(), '/dari_2.Rmd'), output = tempfile()))
 setwd(path)
 ```
 
-
 #### loading Data
+
 ```{r loading Data}
-#sart dom: 0%
-#dom live: 50%
-#rec live: 75% 
-#mutation:  3%
+library(ggplot2)
+#settings used in the sumilation
+  #sart dom: 0%
+  #dom live: 50%
+  #rec live: 75% 
+  #mutation:  3%
 PopPath = 'Populations/'
-#Pop <- read.csv(PopPath %.% 'Population24.csv')
-Pop <- read.csv(PopPath %.% 'Population25.csv')[-4]
+Pop <- read.csv(PopPath %.% 'Population25.csv')[-4] #removing predator column since it is not used
 attach(Pop)
   Pop$Tot = Rec+Dom+Het
   
@@ -34,7 +35,9 @@ attach(Pop)
 detach(Pop)
 dtable(Pop)
 ```
-####  barplot
+
+#### barplot
+
 ```{r barplot}
 attach(Pop,warn.conflicts = FALSE)
   M = nrow(Pop)
@@ -54,7 +57,8 @@ attach(Pop,warn.conflicts = FALSE)
 detach(Pop)
 ```
 
-####  logistic regreassion
+#### logistic regreassion
+
 ```{r logistic regreassion}
 library(stats4)
 X <- N
@@ -67,7 +71,8 @@ print.('Coefficients: ', results@coef)
 print.('Minus Log Likelihood:', results@minuslogl(results@coef[1],results@coef[2]))
 ```
 
-####  $\chi^2$ test
+#### $\chi^2$ test
+
 ```{r X^2 test,results='asis'}
 scale <- max(Pop$Tot) #scale by number of data points
 X_2 <- chisq.stat(Y*scale,Logit.curve(N,results@coef)*scale); htmlCat('$\\chi^2\\ =\\ $ `');htmlCat(X_2)
@@ -75,7 +80,8 @@ pchisq(X_2,29,lower.tail = FALSE)
 print('even though we would expect population growth to be logistic, in this case, seeing as the the P-value was only .1, it does not appear to be a good model. ')
 ```
 
-####  Modeling with Arctangent
+#### Modeling with Arctangent
+
 ```{r Modeling with Arctangent,results='asis'}
 
 
@@ -113,30 +119,63 @@ Coeff <- rev(P.m(X_,y=Y,reg=T,degree = 1));print.(c('a = ','b = ') %.% Coeff) #d
 fLine <- function(x) {
   Coeff[1]+Coeff[2]*x
 }
-plot(X_,Y2,xlim=c(-15,15))
-curve(fLine(x),add = TRUE,col='blue')
+# plot(X_,Y2,xlim=c(-15,15))
+# curve(fLine(x),add = TRUE,col='blue')
+
+expect  <- fLine(X_)
+observe <- Y2
+
+vals <- expect %+% observe
+val.list <- as.list(as.data.frame(t(vals)))
+
+data_frame <- data.frame(x=N-Y0,val=observe,mins=unlist(lapply(val.list, min)),maxs=unlist(lapply(val.list, max)))
+
+ggplot(data_frame, aes(x)) + 
+  stat_function(fun=fLine,colour = 'blue') +
+  geom_point( x=N-Y0, y=observe)+
+  geom_errorbar(aes(ymin=mins, ymax=maxs), width=.2,
+                 position=position_dodge(0.05), colour = 'purple') +
+  labs(x = 'Domminant', y = 'Recessive %', title = 'Rec ~ Dom')
+
+
 
 #undo tanget
 
 
-plot(X_,Y,xlim=c(-15,15))
-curve(Y.denorm(atan(fLine(x))),add = TRUE,col='blue')
+y.detan <- function(x) {
+  Y.denorm(atan(fLine(x)))
+}
 
-expect  <- Y.denorm(atan(fLine(X_))) *scale
-observe <- Y * scale
+
+# plot(X_,Y,xlim=c(-15,15))
+# curve(Y.denorm(atan(fLine(x))),add = TRUE,col='blue')
+
+expect  <- y.detan(X_)
+observe <- Y
+
+vals <- expect %+% observe
+val.list <- as.list(as.data.frame(t(vals)))
+
+data_frame <- data.frame(x=X_,val=observe,mins=unlist(lapply(val.list, min)),maxs=unlist(lapply(val.list, max)))
+
+ggplot(data_frame, aes(x)) + 
+  stat_function(fun=y.detan,colour = 'blue') +
+  geom_point( x=X_, y=observe)+
+  geom_errorbar(aes(ymin=mins, ymax=maxs), width=.2,
+                 position=position_dodge(0.05), colour = 'purple') +
+  labs(x = 'Domminant', y = 'Recessive %', title = 'Rec ~ Dom')
+
+#multiply by number of data points for χ2 test
+expect  %*=% scale
+observe %*=% scale
 
 X_2 <- chisq.stat(observe,expect); htmlCat('$\\chi^2\\ =\\ $ `');htmlCat(X_2)
 pchisq(X_2,29,lower.tail = FALSE); print.('This value is pretty high. ~0.8. That shows that this is a pretty good fit (which can easily be seen). Overall it is quite interesting that an arctanget curve was the best fit.')
 
 ```
 
-
-
-
-
-
-
 #### population change matrix
+
 ```{r population change matrix}
 PopChange <- matrix(nrow = M,ncol = ncol(Pop)); colnames(PopChange) <- colnames(Pop) %.% '.inc' #initialize population change matrix
 for (i in 2:M) {
@@ -151,12 +190,14 @@ for (Col in colnames(Pop)) {
   PopChange[ColBool] <- PopChange[ColNum] > 0 # if the variable increased since the last generation
 }
 
+
 hist(PopChange$Tot.inc,breaks = 15,xlab = 'Overall Population Change',main = 'Histogram of Population Change')
 print.('We see an interesting spike around -8 and another around 5, but a gap near 8')
 dtable(PopChange)
 ```
 
-####  Permutation and contingency table
+#### Permutation and contingency table
+
 ```{r Permutation and contingency table}
 attach(PopChange,warn.conflicts = FALSE)
   table(Rec.bool,Het.bool); print.('This seems to show that when Heterozygous or Recessive increase, the other is likely to do so as well.\n','We can test this with a permutation test')
@@ -165,7 +206,9 @@ attach(PopChange,warn.conflicts = FALSE)
   print.( 'we get a P-value of ~' %+% Pval %+% ' (just under 0.05 when done with n = 1,000,000) which shows that this result is statistically significant in that there does appear to be a positive correlation.' )
 detach(PopChange)
 ```
-####  correlation and co-varience
+
+#### correlation and co-varience
+
 ```{r correlation and co-varience}
 plot(Pop$Dom,Pop$Rec)
 
@@ -177,7 +220,8 @@ Corr <- cor(Pop$Dom,Pop$Rec);print.('We have a correlation of ' %+% Corr %+% '. 
 covar <- var(Pop$Dom,Pop$Rec);print.('We have a covarience of ' %+% covar %+% '. which is large and negative as we would expect as stated above.')
 ```
 
-#### check if dom~rec fits to $\Gamma$ distribution
+#### check if dom\~rec fits to $\Gamma$ distribution
+
 ```{r check if dom~rec fits to gamma distribution}
 X2 <- rep(Pop$Dom,Pop$Rec)
 
@@ -203,13 +247,14 @@ shape <- (E.X*rate)
 Γ.curve.norm$x <- Γ.curve$x[-1] / max(Γ.curve$x[-1]) * max(Pop$Dom)
 Γ.curve.norm$y <- Γ.curve$y[-1] / max(Γ.curve$y[-1]) * max(Pop$Rec)# /Γ.area$value * sum(Pop$Dom)
 
+
 plot(Pop$Dom,Pop$Rec)
 points(Γ.curve.norm$x,Γ.curve.norm$y,type='l',col='blue') #pretty good expect in the second fifth
 ```
 
 #### % Change with $\chi^2$ fit
+
 ```{r perc Change with chisq fit}
-library(ggplot2)
 pChange <- PopChange$perc.inc[-1]
 len <- length(pChange)
 plot(pChange)
@@ -237,7 +282,7 @@ Observe <- pChange
 vals <- Expect %+% Observe
 val.list <- as.list(as.data.frame(t(vals)))
 
-data_frame <- data.frame(x=1:len,val=pChange,mins=unlist(lapply(val.list, min)),maxs=unlist(lapply(val.list, max)))
+data_frame <- data.frame(x=1:len,val=Observe,mins=unlist(lapply(val.list, min)),maxs=unlist(lapply(val.list, max)))
 
 ggplot(data_frame, aes(x)) + 
   stat_function(fun=x2,colour = 'blue') + #source for plotting functions: https://stackoverflow.com/questions/5177846/plot-a-function-with-ggplot-equivalent-of-curve
