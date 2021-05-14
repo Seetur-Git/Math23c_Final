@@ -1,10 +1,10 @@
 ---
 title: "Final - Short"
 output: 
-  html_notebook: default
-  pdf_document: default
   html_document:
     df_print: paged
+  pdf_document: default
+  html_notebook: default
 ---
 
 ```{r Source_dari_2, include=FALSE}
@@ -89,17 +89,17 @@ y.detan <- function(x) {
 }
 
 
-plot(X_,Y,xlim=c(-15,15))
-curve(y.detan(x),add = TRUE,col='blue')
+suppressWarnings(plot(X_,Y,xlim=c(-15,15)))
+ curve(y.detan(x),add = TRUE,col='blue')
 
 
-#get values and multiply by number of data points for χ2 test
+#get values and scale data to have area equal to the number of data points for χ2 test
 scale <- max(Pop$Tot) #scale by number of data points
-expect  <- y.detan(X_) * scale
-observe <-Y * scale
+expect  <- y.detan(X_) * scale / sum(Y)
+observe <-Y * scale / sum(Y)
 
 
-X_2 <- chisq.stat(observe,expect); htmlCat('$\\chi^2\\ =\\ $ `');htmlCat(X_2)
+X_2 <- chisq.stat(observe,expect); print.('$\\chi^2\\ =\\ '%+%X_2%+% '$.')
 pchisq(X_2,29,lower.tail = FALSE); print.('This value is pretty high. ~0.8. That shows that this is a pretty good fit (which can easily be seen). Overall it is quite interesting that an arctanget curve was the best fit.')
 
 ```
@@ -125,21 +125,22 @@ print.('We see an interesting spike around -8 and another around 5, but a gap ne
 ```
 
 
-### % Change with $\chi^2$ fit
+#### % Change with $\chi^2$ fit
 
-```{r perc Change with chisq fit}
+```{r perc Change with chisq fit,results='asis'}
 pChange <- PopChange$perc.inc[-1]
 len <- length(pChange)
 
-pChange.norm <- pChange/sum(pChange) #normalized data
-pChange.df <- sum(pChange.norm*1:len); #calculates the mean, which is then used as the degrees of freedom
+pChange.sum <- sum(pChange)
+pChange.norm <- pChange/pChange.sum #normalized data
+pChange.df <- sum(pChange.norm*1:len);print.(pChange.df) #calculates the mean, which is then used as the degrees of freedom
 
 scale <- integrate(dchisq,df=pChange.df,1,len)$value #area under χ2, used to scale the 
 
 x2 <- function(x) {
   ans <- dchisq(x,pChange.df) #χ2 fitted to the correct degrees of freedom
   ans %/=% scale              #divide by area under curve to normalize
-  ans %*=% sum(pChange)        #multiply by the area it should have
+  ans %*=% pChange.sum        #multiply by the area it should have
   return(ans)
 }
 
@@ -150,5 +151,14 @@ curve(x2(x),add = T,col='blue') #plots the scaled and fitted χ2
 Expect  <- x2(1:len)
 Observe <- pChange
 
+
+
 t.test(Observe,Expect); print.('We get a P-value of', t.test(Observe,Expect)$p.value ,'which shows that these likely come from the same distribution.')
+
+#Do with χ2 (this means that the data needs to be scaled)
+Expect  %*=% (len / sum(pChange))
+Observe  %*=% (len / sum(pChange))
+
+X_2 <- chisq.stat(Observe,Expect); print.('$\\chi^2\\ =\\ '%+%X_2%+% '$.')
+pchisq(X_2,29,lower.tail = FALSE); print.('<br> However, when we do a $\\chi^2$ test, we end up with a very low P-value, which would suggest that this is a bad fit.','<br><br>','It should also be noted that for both of these tests the null hypothesis is that the two data points come from the same distribution, meaning that a high P-value means that they are related. (unlike a permutation test which has independance as the null and thus the reverse meaning of P-values)')
 ```
