@@ -1,5 +1,5 @@
 # Math23c_Final
-## by Dari and Edie
+### by Dari and Edie
 
 
 There is a branch with the HTML for the simulation. I made it in Game maker studio for web.
