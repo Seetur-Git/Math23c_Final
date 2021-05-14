@@ -1,5 +1,8 @@
 # Math23c_Final
 
+Dari and Edie
+
+
 There is a branch with the HTML for the simulation. I made it in Game maker studio for web.
 
 here is a link to a wbsite (made form that branch) using netlify: https://math-23c-final.netlify.app/
